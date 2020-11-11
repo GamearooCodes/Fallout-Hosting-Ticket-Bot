@@ -90,21 +90,23 @@ client.on('messageReactionAdd', async (reaction, user) => {
 		const ticketConfig = TicketConfig.findOne({ where: { messageId: reaction.message.id } });
 		if (ticketConfig) {
 			const findTicket = await Ticket.findOne({ where: { authorId: user.id, resolved: false } });
-			let name = findTicket.getDataValue('channelId');
-			let hi = client.channels.cache.get(name);
-			let existing = new Discord.MessageEmbed()
-				.setAuthor(message.guild.name)
-				.setDescription('Error While Making The Ticket (Duplicate)')
 
-				.setColor('RED')
-				.setThumbnail(message.guild.iconURL())
-				.addField('Channel Already Opened', hi)
-				.setFooter(
-					'You have a ticket already',
-					'https://cdn.discordapp.com/attachments/664911476405960754/693556558130577478/Fallout_icon.png'
-				);
-			if (findTicket) user.send(existing);
-			else {
+			if (findTicket) {
+				let name = findTicket.getDataValue('channelId');
+				let hi = client.channels.cache.get(name);
+				let existing = new Discord.MessageEmbed()
+					.setAuthor(message.guild.name)
+					.setDescription('Error While Making The Ticket (Duplicate)')
+
+					.setColor('RED')
+					.setThumbnail(message.guild.iconURL())
+					.addField('Channel Already Opened', hi)
+					.setFooter(
+						'You have a ticket already',
+						'https://cdn.discordapp.com/attachments/664911476405960754/693556558130577478/Fallout_icon.png'
+					);
+				user.send(existing);
+			} else {
 				console.log('Making A Ticket...');
 				try {
 					let reason = `To set the Subject run ${prefix}subject <subject>`;
