@@ -67,8 +67,11 @@ client.on('message', async message => {
 					guildId: message.guild.id,
 					parentId: catChan.id
 				});
+
+				await fetchMsg.react('🎟️');
+
 				message.channel.send(
-					'Successfully added to db! Alert: Msgs will self delete deleting them will cause the msgs above to be removed!'
+					'Successfully added to db! Alert: Msgs will self delete. deleting them will cause the msgs above to be removed!'
 				);
 				setTimeout(() => {
 					message.channel.bulkDelete(6, true);
@@ -82,7 +85,69 @@ client.on('message', async message => {
 	}
 });
 
-client.on('messageReactionAdd', async (reaction, user) => {});
+client.on('messageReactionAdd', async (reaction, user) => {
+	if (reaction.emoji.name === '🎟️') {
+		const ticketConfig = TicketConfig.findOne({ where: { messageId: reaction.message.id } });
+		if (ticketConfig) {
+			const findTicket = await Ticket.findOne({ where: { authorId: user.id, resolved: false } });
+			let name = findTicket.getDataValue('channelId');
+			let hi = client.channels.cache.get(name);
+			let existing = new Discord.MessageEmbed()
+				.setAuthor(message.guild.name)
+				.setDescription('Error While Making The Ticket (Duplicate)')
+
+				.setColor('RED')
+				.setThumbnail(message.guild.iconURL())
+				.addField('Channel Already Opened', hi)
+				.setFooter(
+					'You have a ticket already',
+					'https://cdn.discordapp.com/attachments/664911476405960754/693556558130577478/Fallout_icon.png'
+				);
+			if (findTicket) user.send(existing);
+			else {
+				console.log('Making A Ticket...');
+				try {
+					let reason = `To set the Subject run ${prefix}subject <subject>`;
+					const staffrole = client.roles.cache.find(r => r.name === process.env.staff);
+					let staffid = staffrole.id;
+
+					const channel = await reaction.message.guild.channels.create('ticket', {
+						parent: ticketConfig.getDataValue('parentId'),
+						topic: `Subject: ${reason}`,
+						permissionOverwrites: [
+							{ deny: 'VIEW_CHANNEL', id: reaction.messages.guild.id },
+							{ allow: 'VIEW_CHANNEL', id: user.id },
+							{ allow: 'VIEW_CHANNEL', staffid }
+						],
+						reason: `${user.tag} Had Reacted To Open this ticket!`
+					});
+					let infoembed = new Discord.MessageEmbed()
+						.setDescription(
+							`Dear, ${user} \n \n Your support ticket has been created. \n Please wait for a member of the Support Team to help you out. Below are reaction options!`
+						)
+						.addField('Close', `❌`)
+						.addField('Send Me A Copy Of The Ticket on close!', `📩`);
+
+					const msg = await message.channel.send(infoembed);
+					await msg.pin();
+					await msg.react('❌');
+					await msg.react('📩');
+					const ticket = await Ticket.create({
+						authorId: user.id,
+						channelId: channel.id,
+						guildId: reaction.message.guild.id,
+						resolved: false,
+						closeMessageId: msg.id
+					});
+				} catch (err) {
+					error(err);
+				}
+			}
+		} else {
+			return;
+		}
+	}
+});
 
 client.login(process.env.token);
 
