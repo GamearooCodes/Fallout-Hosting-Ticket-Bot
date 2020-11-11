@@ -14,12 +14,13 @@ const prefix = process.env.prefix;
 client.on('ready', async () => {
 	console.log('Bot Has Started!');
 	db.authenticate()
-		.then(() => {
+		.then(async () => {
 			console.log('Connected to DataBase!');
 			Ticket.init(db);
 			TicketConfig.init(db);
 			Ticket.sync();
 			TicketConfig.sync();
+			console.log('Completed!');
 		})
 		.catch(err => error(err));
 });
@@ -52,13 +53,28 @@ client.on('message', async message => {
 	) {
 		try {
 			const filter = m => m.author.id === message.author.id;
-			message.channel.send('Please enter the message id for this ticket!');
+			await message.channel.send('Please enter the message id for this ticket!');
 			const msgId = (await message.channel.awaitMessages(filter, { max: 1 })).first().content;
 			const fetchMsg = await message.channel.messages.fetch(msgId);
+
 			message.channel.send('Please enter the category id for the tickets to go too!');
 			const catId = (await message.channel.awaitMessages(filter, { max: 1 })).first().content;
 			const catChan = client.channels.cache.get(catId);
+
 			if (fetchMsg && catChan) {
+				const ticketConfig = TicketConfig.create({
+					messageId: msgId,
+					guildId: message.guild.id,
+					parentId: catChan.id
+				});
+				message.channel.send(
+					'Successfully added to db! Alert: Msgs will self delete deleting them will cause the msgs above to be removed!'
+				);
+				setTimeout(() => {
+					message.channel.bulkDelete(6, true);
+				}, 5000);
+			} else {
+				error('Invalid fields!');
 			}
 		} catch (err) {
 			error(err);
