@@ -4,6 +4,9 @@ const client = new Client();
 const { MessageEmbed } = require('discord.js');
 const db = require('./database');
 
+const Ticket = require('./models/Ticket');
+const TicketConfig = require('./models/TicketConfig');
+
 cooldown = new Set();
 
 const prefix = process.env.prefix;
@@ -13,6 +16,10 @@ client.on('ready', async () => {
 	db.authenticate()
 		.then(() => {
 			console.log('Connected to DataBase!');
+			Ticket.init(db);
+			TicketConfig.init(db);
+			Ticket.sync();
+			TicketConfig.sync();
 		})
 		.catch(err => error(err));
 });
