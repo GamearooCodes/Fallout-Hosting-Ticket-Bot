@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { Client } = require('discord.js');
-const client = new Client();
+const client = new Client({ partials: ['MESSAGE', 'CHANNEL', 'REACTION'] });
 const { MessageEmbed } = require('discord.js');
 const db = require('./database');
 
@@ -13,6 +13,7 @@ const prefix = process.env.prefix;
 
 client.on('ready', async () => {
 	console.log('Bot Has Started!');
+
 	db.authenticate()
 		.then(async () => {
 			console.log('Connected to DataBase!');
@@ -87,20 +88,19 @@ client.on('message', async message => {
 
 client.on('messageReactionAdd', async (reaction, user) => {
 	if (reaction.emoji.name === '🎟️') {
-		const ticketConfig = TicketConfig.findOne({ where: { messageId: reaction.message.id } });
+		reaction.users.remove(user.id);
+		const ticketConfig = await TicketConfig.findOne({ where: { messageId: reaction.message.id } });
 		if (ticketConfig) {
 			const findTicket = await Ticket.findOne({ where: { authorId: user.id, resolved: false } });
 
 			if (findTicket) {
-				let name = findTicket.getDataValue('channelId');
-				let hi = client.channels.cache.get(name);
-				let existing = new Discord.MessageEmbed()
-					.setAuthor(message.guild.name)
+				let existing = new MessageEmbed()
+					.setAuthor(reaction.message.guild.name)
 					.setDescription('Error While Making The Ticket (Duplicate)')
 
 					.setColor('RED')
-					.setThumbnail(message.guild.iconURL())
-					.addField('Channel Already Opened', hi)
+					.setThumbnail(reaction.message.guild.iconURL())
+
 					.setFooter(
 						'You have a ticket already',
 						'https://cdn.discordapp.com/attachments/664911476405960754/693556558130577478/Fallout_icon.png'
@@ -110,27 +110,28 @@ client.on('messageReactionAdd', async (reaction, user) => {
 				console.log('Making A Ticket...');
 				try {
 					let reason = `To set the Subject run ${prefix}subject <subject>`;
-					const staffrole = client.roles.cache.find(r => r.name === process.env.staff);
+
+					const staffrole = reaction.message.guild.roles.cache.find(r => r.name === process.env.staff);
 					let staffid = staffrole.id;
 
 					const channel = await reaction.message.guild.channels.create('ticket', {
-						parent: ticketConfig.getDataValue('parentId'),
+						parent: await ticketConfig.getDataValue('parentId'),
 						topic: `Subject: ${reason}`,
 						permissionOverwrites: [
-							{ deny: 'VIEW_CHANNEL', id: reaction.messages.guild.id },
+							{ deny: 'VIEW_CHANNEL', id: reaction.message.guild.id },
 							{ allow: 'VIEW_CHANNEL', id: user.id },
-							{ allow: 'VIEW_CHANNEL', staffid }
+							{ allow: 'VIEW_CHANNEL', id: staffid }
 						],
 						reason: `${user.tag} Had Reacted To Open this ticket!`
 					});
-					let infoembed = new Discord.MessageEmbed()
+					let infoembed = new MessageEmbed()
 						.setDescription(
 							`Dear, ${user} \n \n Your support ticket has been created. \n Please wait for a member of the Support Team to help you out. Below are reaction options!`
 						)
 						.addField('Close', `❌`)
 						.addField('Send Me A Copy Of The Ticket on close!', `📩`);
 
-					const msg = await message.channel.send(infoembed);
+					const msg = await channel.send(infoembed);
 					await msg.pin();
 					await msg.react('❌');
 					await msg.react('📩');
@@ -141,6 +142,9 @@ client.on('messageReactionAdd', async (reaction, user) => {
 						resolved: false,
 						closeMessageId: msg.id
 					});
+
+					const ticketId = String(ticket.getDataValue('ticketId')).padStart(4, 0);
+					await channel.edit({ name: `ticket-${ticketId}` });
 				} catch (err) {
 					error(err);
 				}
@@ -156,6 +160,6 @@ client.login(process.env.token);
 async function error(err) {
 	let guild = client.guilds.cache.get(process.env.guildId);
 	let owner = guild.members.cache.get(process.env.botdevId);
-	console.log('An Error Has Happened!');
+	console.log(err);
 	owner.send(`\`\`\`An Error Has happened! \n Error: ${err}\`\`\``);
 }
