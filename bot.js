@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client } = require('discord.js');
 const client = new Client();
 const { MessageEmbed } = require('discord.js');
+const db = require('./database');
 
 cooldown = new Set();
 
@@ -9,6 +10,11 @@ const prefix = process.env.prefix;
 
 client.on('ready', async () => {
 	console.log('Bot Has Started!');
+	db.authenticate()
+		.then(() => {
+			console.log('Connected to DataBase!');
+		})
+		.catch(err => error(err));
 });
 
 client.on('message', async message => {
