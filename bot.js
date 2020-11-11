@@ -5,6 +5,8 @@ const { MessageEmbed } = require('discord.js');
 
 cooldown = new Set();
 
+const prefix = process.env.prefix;
+
 client.on('ready', async () => {
 	console.log('Bot Has Started!');
 });
@@ -22,6 +24,12 @@ client.on('message', async message => {
 			cooldown.delete(message.author.id);
 		}, 200000);
 		return;
+	}
+
+	if (
+		message.content.toLocaleLowerCase() === `${prefix}setup` &&
+		message.member.roles.cache.find(r => r.name === process.env.staff)
+	) {
 	}
 });
 
