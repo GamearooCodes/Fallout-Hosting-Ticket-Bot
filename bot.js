@@ -57,6 +57,85 @@ client.on('message', async message => {
 		message.channel.send(dmembed).catch(err => error(err));
 	}
 
+	if (message.content.toLocaleLowerCase() === `${prefix}new`) {
+		const user = message.author;
+
+		const ticketConfig = await TicketConfig.findOne({ where: { messageId: `${process.env.it}` } });
+		if (ticketConfig) {
+			const findTicket = await Ticket.findOne({ where: { authorId: user.id, resolved: false } });
+
+			if (findTicket) {
+				let existing = new MessageEmbed()
+					.setAuthor(message.guild.name)
+					.setDescription('Error While Making The Ticket (Duplicate)')
+
+					.setColor('RED')
+					.setThumbnail(message.guild.iconURL())
+
+					.setFooter(
+						'You have a ticket already',
+						'https://cdn.discordapp.com/attachments/664911476405960754/693556558130577478/Fallout_icon.png'
+					);
+				user.send(existing).catch(err => error(err));
+			} else {
+				console.log('Making A Ticket...');
+				try {
+					const filter2 = m => m.author.id === message.author.id;
+					message.channel.send(`Please Provide A Subject!`);
+					const msgId = (await message.channel.awaitMessages(filter2, { max: 1 })).first().content;
+					message.channel.bulkDelete(2, true);
+					let reason = msgId;
+
+					// let reason = `To set the Subject run ${prefix}subject <subject>`;
+
+					const staffrole = message.guild.roles.cache.find(r => r.name === process.env.staff);
+					let staffid = staffrole.id;
+
+					const channel = await message.guild.channels.create('ticket', {
+						parent: await ticketConfig.getDataValue('parentId'),
+						topic: `Subject: ${reason}`,
+						permissionOverwrites: [
+							{ deny: 'VIEW_CHANNEL', id: message.guild.id },
+							{ allow: 'VIEW_CHANNEL', id: user.id },
+							{ allow: 'VIEW_CHANNEL', id: staffid }
+						],
+						reason: `${user.tag} Had Reacted To Open this ticket!`
+					});
+					let infoembed = new MessageEmbed()
+						.setDescription(
+							`Dear, ${user} \n \n Your support ticket has been created. \n Please wait for a member of the Support Team to help you out. Below are reaction options!`
+						)
+						.addField('Close', `❌`)
+						.addField('Send Me A Copy Of The Ticket on close!', `📩`);
+
+					const msg = await channel.send(infoembed);
+					await msg.pin();
+					await msg.react('❌');
+					await msg.react('📩');
+
+					const ticket = await Ticket.create({
+						authorId: user.id,
+						channelId: channel.id,
+						guildId: message.guild.id,
+						resolved: false,
+						optionsMessageId: msg.id
+					});
+
+					const ticketId = String(ticket.getDataValue('ticketId')).padStart(4, 0);
+					await channel.edit({ name: `ticket-${ticketId}` });
+				} catch (err) {
+					error(err);
+				}
+			}
+		} else {
+			return;
+		}
+		message.delete();
+	}
+	if (message.content.toLocaleLowerCase() === `${prefix}close`) {
+		message.reply('Ive moved to a reaction! Check the channel pins for the embed with the reaction.');
+	}
+
 	if (
 		message.content.toLocaleLowerCase() === `${prefix}setup` &&
 		message.member.roles.cache.find(r => r.name === process.env.staff)
