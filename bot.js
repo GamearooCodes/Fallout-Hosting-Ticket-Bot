@@ -307,6 +307,8 @@ client.on('message', async message => {
 		if (!message.channel.name.startsWith('ticket-'))
 			return message.channel.send('You Must be In your ticket to add a subject!');
 
+		const filter = m => m.author.id === message.author.id;
+
 		message.channel.send('Please enter a subject!');
 		const msgId = (await message.channel.awaitMessages(filter, { max: 1 })).first().content;
 
