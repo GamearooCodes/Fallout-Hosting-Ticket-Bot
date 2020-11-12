@@ -17,8 +17,10 @@
   },
   "homepage": "https://github.com/GamearooCodes/Fallout-Hosting-Ticket-Bot#readme",
   "dependencies": {
+    "canvas": "^2.6.1",
     "discord.js": "^12.4.1",
     "dotenv": "^8.2.0",
+    "jsdom": "^16.4.0",
     "mysql2": "^2.2.5",
     "sequelize": "^6.3.5"
   }

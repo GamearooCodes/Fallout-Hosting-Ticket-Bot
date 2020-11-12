@@ -18,7 +18,7 @@ module.exports = class Ticket extends Model {
 				resolved: {
 					type: DataTypes.BOOLEAN
 				},
-				closedMessageId: {
+				optionsMessageId: {
 					type: DataTypes.STRING
 				},
 				authorId: {
