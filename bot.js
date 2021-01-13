@@ -82,7 +82,7 @@ client.on("message", async (message) => {
   //	message.channel.send(dmembed).catch(err => error(err));
   //}
 
-  var args = message.content.slice(prefix.length).trim().split(" ");
+  var args = message.content.slice(1).trim().split(" ");
 
   if (message.content.toLocaleLowerCase() === `${prefix}new`) {
     const user = message.author;
@@ -380,31 +380,42 @@ client.on("message", async (message) => {
     }
     return;
   }
-  if (message.content.toLocaleLowerCase() === `${prefix}transfer`) {
+  if (args[0].toLocaleLowerCase() === `transfer`) {
     if (!message.channel.name.startsWith("ticket-"))
       return message.channel.send(
         "You Must be In a ticket to change the department!"
       );
-    let dep = args[1];
+    var dep = args[1];
     const role = message.guild.roles.cache.find((r) => r.name === "Staff");
 
-    if (!message.member.roles.cache.has(role.id))
+    if (!message.member.roles.cache.has(role.id)) {
       return message.channel.send(
         `Sorry Currently only the staff team can transfer departments!`
       );
-    if (!args[1]) return message.reply("No Department selected!");
+    }
+    console.log(args);
+    if (!dep) {
+      return message.reply("No Department selected!");
+    }
 
-    const ticket = await Ticket.findOne({
-      where: { channelId: reaction.message.channel.id },
+    console.log("1");
+    const ticket2 = await Ticket.findOne({
+      where: { channelId: message.channel.id },
     });
+    console.log("2");
 
-    if (!ticket) return message.reply(`This isn't a valid ticket!`);
+    if (ticket2) {
+      console.log("yes");
+      ticket2.department = args[1];
+      await ticket2.save();
 
-    ticket.department = args[1];
+      message.channel.setTopic(`Department: ${args[1]}`);
 
-    message.channel.setTopic(`Department: ${args[1]}`);
-
-    message.channel.send(`Department Set to ${args[1]}`);
+      message.channel.send(`Department Set to ${args[1]}`);
+    } else {
+      console.log("No");
+      return message.reply(`Must be a ticket i created!`);
+    }
   }
 
   if (
@@ -727,10 +738,18 @@ client.on("messageReactionAdd", async (reaction, user) => {
               const embed = new MessageEmbed()
                 .setTitle("Ticket Closed")
                 .setColor("#6441a5")
-                .setAuthor(message.author.tag, message.author.avatarURL())
-                .addField("Closed By:", message.author.tag)
+                .setAuthor(user.tag, user.avatarURL({ dynamic: true }))
+                .addField("Closed By:", user.tag)
                 .addField(`${yt.name} `, `Ticket Author ${member.user.tag}`)
-                .setThumbnail(member.user.avatarURL())
+                .addField(
+                  "Original Department:",
+                  ticket.getDataValue("original")
+                )
+                .addField(
+                  "Department When Closed:",
+                  ticket.getDataValue("department")
+                )
+                .setThumbnail(member.user.avatarURL({ dynamic: true }))
                 .setTimestamp(message.createdTimestamp);
 
               yy.send(embed);
