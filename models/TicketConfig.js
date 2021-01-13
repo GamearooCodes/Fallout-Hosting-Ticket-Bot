@@ -1,24 +1,29 @@
-const { DataTypes, Model } = require('sequelize');
+const { DataTypes, Model } = require("sequelize");
 
-module.exports = class TicketConfig extends Model {
-	static init(sequelize) {
-		return super.init(
-			{
-				messageId: {
-					type: DataTypes.STRING,
-					primaryKey: true
-				},
-				guildId: {
-					type: DataTypes.STRING
-				},
-				parentId: {
-					type: DataTypes.STRING
-				}
-			},
-			{
-				tableName: 'TicketConfigs',
-				sequelize
-			}
-		);
-	}
+module.exports = class TicketConfig extends (
+  Model
+) {
+  static init(sequelize) {
+    return super.init(
+      {
+        messageId: {
+          type: DataTypes.STRING,
+          primaryKey: true,
+        },
+        guildId: {
+          type: DataTypes.STRING,
+        },
+        parentId: {
+          type: DataTypes.STRING,
+        },
+        department: {
+          type: DataTypes.STRING,
+        },
+      },
+      {
+        tableName: "TicketConfigs",
+        sequelize,
+      }
+    );
+  }
 };
