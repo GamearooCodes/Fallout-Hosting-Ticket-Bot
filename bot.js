@@ -57,6 +57,26 @@ client.on("ready", async () => {
     })
     .catch((err) => error(err));
 });
+//anti ping system
+client.on("message", async (msg) => {
+  if (msg.author.bot) return;
+  const mentionedUser = msg.mentions.members.first();
+  const role = msg.guild.roles.cache.get("499965086304043008");
+
+  if (mentionedUser.roles.cache.has(role.id)) {
+    const noEmbed = new MessageEmbed()
+      .setDescription(
+        `Sorry Pining Staff is not allowed. A staff member will see your message shortly or you can make a ticket  in <#798797140570013706> \n Message: ${msg.content}`
+      )
+      .setAuthor(
+        msg.author.tag,
+        msg.author.avatarURL({ dynamic: true, format: "png" })
+      )
+      .setColor("#FF0000");
+    msg.delete();
+    await msg.channel.send(msg.author, noEmbed).catch((err) => error(err));
+  }
+});
 
 client.on("message", async (message) => {
   if (message.author.bot) return;
@@ -74,17 +94,57 @@ client.on("message", async (message) => {
     }, 200000);
     return;
   }
-  //	if (
-  //	message.content.toLocaleLowerCase() === `${prefix}setupmsg` &&
-  //	message.member.roles.cache.find(r => r.name === process.env.staff)
-  //) {
-  //	let dmembed = new MessageEmbed().setDescription(`React To Open A Ticket.`).setColor('GREEN');
-  //	message.channel.send(dmembed).catch(err => error(err));
-  //}
 
   var args = message.content.slice(1).trim().split(" ");
+  if (message.content.toLocaleLowerCase() === `${prefix}ping`) {
+    let botMsg = await message.channel.send("〽️ " + "Pinging");
+
+    let b;
+    if (Math.round(client.ws.ping) >= 300) b = "true";
+    if (Math.round(client.ws.ping) < 300) b = "false";
+
+    let d;
+
+    if (Math.round(botMsg.createdAt - message.createdAt) >= 500) d = "true";
+    if (Math.round(botMsg.createdAt - message.createdAt) < 500) d = "false";
+
+    const embed = new MessageEmbed()
+      .setAuthor(client.user.tag, client.user.avatarURL())
+      .setThumbnail(client.user.avatarURL())
+      .setTitle("Pong!")
+      .setTimestamp(message.createdTimestamp)
+      .addField(
+        `Bots Ping`,
+        `🏓${Math.round(botMsg.createdAt - message.createdAt)}ms!🏓 `,
+        false
+      )
+      .addField("Api Ping", `🏓${Math.round(client.ws.ping)}ms!🏓`, true)
+
+      .setFooter(
+        `Requested By: ${message.author.tag}`,
+        message.author.avatarURL({ dynamic: true })
+      )
+      .setColor("RANDOM");
+
+    return botMsg.edit(" ", embed);
+  }
+  if (message.content.toLocaleLowerCase() === `${prefix}solved`) {
+    let embed = new MessageEmbed().setDescription(
+      "Glad We were able to assist you 😃. React With ❌ To close Ticket!"
+    );
+    let msg2 = await message.channel.send(embed);
+    const ticket3 = await Ticket.findOne({
+      where: { channelId: message.channel.id },
+    });
+
+    ticket3.optionsMessageId = msg2.id;
+    await ticket3.save();
+
+    msg2.react("❌");
+  }
 
   if (message.content.toLocaleLowerCase() === `${prefix}new`) {
+    return message.reply(`You can open a ticket in <#798797140570013706>!`);
     const user = message.author;
 
     const ticketConfig = await TicketConfig.findOne({
@@ -158,8 +218,6 @@ client.on("message", async (message) => {
           await msg.react("❌");
           await msg.react("📩");
 
-          await channel.send(`Hello ${user}, How may we help you today?`);
-
           const ticket = await Ticket.create({
             authorId: user.id,
             channelId: channel.id,
@@ -175,6 +233,41 @@ client.on("message", async (message) => {
             0
           );
           await channel.edit({ name: `ticket-${ticketId}` });
+          var hi = "no";
+          const filter3 = (m) => m.author.id === message.author.id;
+
+          await channel.send(`Hello ${user}, How may we help you today?`);
+
+          var department3 = (await channel.awaitMessages(filter3, { max: 1 }))
+            .first()
+            .content.toLowerCase();
+
+          if (department3.includes("how to setup a ftp")) {
+            channel.send(`
+              ${message.member}, You can try watching this video: https://youtu.be/zIP5n1ruEgo 
+            `);
+            channel.send("Has this helped You?");
+            var department4 = (await channel.awaitMessages(filter3, { max: 1 }))
+              .first()
+              .content.toLowerCase();
+            if (department4.startsWith("yes")) {
+              let embed = new MessageEmbed().setDescription(
+                "Glad i was able to assist you 😃. Can we close this ticket or will you still need it?"
+              );
+              channel.send(embed);
+            }
+            if (department4.startsWith("no")) {
+              let embed = new MessageEmbed().setDescription(
+                "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+              );
+              channel.send(embed);
+            }
+          } else {
+            let embed = new MessageEmbed().setDescription(
+              "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+            );
+            channel.send(embed);
+          }
         } catch (err) {
           error(err);
         }
@@ -195,6 +288,9 @@ client.on("message", async (message) => {
           VIEW_CHANNEL: false,
         })
         .catch((err) => error(err));
+      return await message.reply(
+        "React to the proper reaction in the msg in the pins to close! Close command tempararaly unavalible!"
+      );
 
       ticket.resolved = true;
       await ticket.save();
@@ -535,8 +631,6 @@ client.on("messageReactionAdd", async (reaction, user) => {
           await msg.react("❌");
           await msg.react("📩");
 
-          await channel.send(`Hello ${user}, How may we help you today?`);
-
           const ticket = await Ticket.create({
             authorId: user.id,
             channelId: channel.id,
@@ -552,6 +646,99 @@ client.on("messageReactionAdd", async (reaction, user) => {
             0
           );
           await channel.edit({ name: `ticket-${ticketId}` });
+
+          const filter3 = (m) => m.author.id === user.id;
+
+          await channel.send(`Hello ${user}, How may we help you today?`);
+
+          var department3 = (await channel.awaitMessages(filter3, { max: 1 }))
+            .first()
+            .content.toLowerCase();
+          if (department3.includes("upgrade")) {
+            channel.send(
+              `Ok we can assist you here. Mind stating what plan or gb you would like to upgrade to?`
+            );
+            var department5 = (await channel.awaitMessages(filter3, { max: 1 }))
+              .first()
+              .content.toLowerCase();
+            if (department5) {
+              channel.send(
+                `Perfect Can you list the ip:port of the server you want upgraded?`
+              );
+              var department5 = (
+                await channel.awaitMessages(filter3, { max: 1 })
+              )
+                .first()
+                .content.toLowerCase();
+              let embed3 = new MessageEmbed().setDescription(
+                "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+              );
+              channel.send(embed3);
+              return;
+            }
+            return;
+          }
+
+          if (department3.includes("ftp")) {
+            channel.send(`
+              ${user}, You can try watching this video: https://youtu.be/zIP5n1ruEgo - Has this helped You? (yes or no)
+            `);
+
+            var department4 = (await channel.awaitMessages(filter3, { max: 1 }))
+              .first()
+              .content.toLowerCase();
+            if (department4.startsWith("yes")) {
+              let embed = new MessageEmbed().setDescription(
+                "Glad i was able to assist you 😃. React With ❌ To close Ticket!"
+              );
+              let msg2 = await channel.send(embed);
+              const ticket3 = await Ticket.findOne({
+                where: { channelId: channel.id },
+              });
+
+              ticket3.optionsMessageId = msg2.id;
+              await ticket3.save();
+
+              msg2.react("❌");
+            }
+            if (department4.startsWith("no")) {
+              let embed = new MessageEmbed().setDescription(
+                "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+              );
+              channel.send(embed);
+            } else {
+              var department5 = (
+                await channel.awaitMessages(filter3, { max: 1 })
+              )
+                .first()
+                .content.toLowerCase();
+              if (department5.startsWith("yes")) {
+                let embed = new MessageEmbed().setDescription(
+                  "Glad i was able to assist you 😃. React With ❌ To close Ticket!"
+                );
+                let msg3 = await channel.send(embed);
+                const ticket2 = await Ticket.findOne({
+                  where: { channelId: channel.id },
+                });
+
+                ticket2.optionsMessageId = msg3.id;
+                await ticket2.save();
+
+                msg3.react("❌");
+              }
+              if (department5.startsWith("no")) {
+                let embed = new MessageEmbed().setDescription(
+                  "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+                );
+                channel.send(embed);
+              }
+            }
+          } else {
+            let embed = new MessageEmbed().setDescription(
+              "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+            );
+            channel.send(embed);
+          }
         } catch (err) {
           error(err);
         }
@@ -759,6 +946,16 @@ client.on("messageReactionAdd", async (reaction, user) => {
           }, 5000);
         }, 20000);
       }
+    }
+  }
+  if (reaction.emoji.name === "✅") {
+    reaction.users.remove(user.id);
+    let role = message.guild.roles.cache.get("615745929550626827");
+    let member = message.guild.members.cache.get(user.id);
+    if (member.roles.cache.has(role.id)) {
+      member.roles.remove(role.id);
+    } else {
+      member.roles.add(role.id);
     }
   }
   if (reaction.emoji.name === "📩") {
