@@ -9,6 +9,7 @@ const Discord = require("discord.js");
 const db = require("./database");
 const fs = require("fs");
 const jsdom = require("jsdom");
+const force = new Map();
 const { Collector } = require("discord.js");
 const { JSDOM } = jsdom;
 const version = "2.4";
@@ -58,28 +59,40 @@ client.on("ready", async () => {
     .catch((err) => error(err));
 });
 //anti ping system
-client.on("message", async (msg) => {
-  if (msg.author.bot) return;
-  const mentionedUser = msg.mentions.members.first();
-  const role = msg.guild.roles.cache.get("499965086304043008");
-
-  if (mentionedUser.roles.cache.has(role.id)) {
-    const noEmbed = new MessageEmbed()
-      .setDescription(
-        `Sorry Pining Staff is not allowed. A staff member will see your message shortly or you can make a ticket  in <#798797140570013706> \n Message: ${msg.content}`
-      )
-      .setAuthor(
-        msg.author.tag,
-        msg.author.avatarURL({ dynamic: true, format: "png" })
-      )
-      .setColor("#FF0000");
-    msg.delete();
-    await msg.channel.send(msg.author, noEmbed).catch((err) => error(err));
-  }
-});
 
 client.on("message", async (message) => {
   if (message.author.bot) return;
+  if (message.channel.name.startsWith("ticket-")) {
+    if (!message.member.roles.cache.has("499965086304043008")) return;
+    if (!message.content.startsWith("-")) {
+      const ticket66 = await Ticket.findOne({
+        where: { channelId: message.channel.id },
+      });
+
+      if (ticket66.staff === "null") {
+        message.channel.messages
+          .fetch({ around: ticket66.optionsMessageId, limit: 1 })
+          .then(async (msg) => {
+            let iuser = message.guild.members.cache.get(ticket66.authorId);
+            ticket66.staff = message.author.id;
+
+            let infoembed = new MessageEmbed()
+              .setDescription(
+                `Dear, ${iuser} \n  Your support ticket has been created. \n A Staff Member Is Currently here to help you. \n\n Department: ${await ticket66.getDataValue(
+                  "department"
+                )} \n Staff: ${
+                  message.author
+                } \n\n Below are reaction options! `
+              )
+              .addField("Close", `❌`)
+              .addField("Send Me A Copy Of The Ticket on close!", `📩`);
+            let fecthmsg = msg.first();
+            fecthmsg.edit(infoembed);
+            await ticket66.save();
+          });
+      }
+    }
+  }
   let dmembed = new MessageEmbed()
     .setDescription(`Sorry We Don't Provide Dm Support.`)
     .setColor("RED");
@@ -455,7 +468,9 @@ client.on("message", async (message) => {
 
               let ch = me2;
 
-              let member = message.guild.members.cache.get(me2);
+              let member = message.guild.members.cache
+                .get(me2)
+                .catch((err) => message.channel.send(err.name));
 
               const embed = new MessageEmbed()
                 .setTitle("Ticket Closed")
@@ -506,8 +521,24 @@ client.on("message", async (message) => {
       await ticket2.save();
 
       message.channel.setTopic(`Department: ${args[1]}`);
-
-      message.channel.send(`Department Set to ${args[1]}`);
+      message.channel.messages
+        .fetch({ around: ticket2.optionsMessageId, limit: 1 })
+        .then(async (msg) => {
+          let user = message.guild.members.cache.get(ticket2.authorId);
+          let infoembed = new MessageEmbed()
+            .setDescription(
+              `Dear, ${user} \n  Your support ticket has been created. \n A Staff Member Is Currently here to help you. \n\n Original Department: ${
+                ticket2.original
+              } \n\n Department: ${await ticket2.department} \n Staff: <@${
+                ticket2.staff
+              }> \n\n Below are reaction options! `
+            )
+            .addField("Close", `❌`)
+            .addField("Send Me A Copy Of The Ticket on close!", `📩`);
+          let fetched = msg.first();
+          fetched.edit(infoembed);
+          message.channel.send(`Department Set to ${args[1]}`);
+        });
     } else {
       console.log("No");
       return message.reply(`Must be a ticket i created!`);
@@ -568,6 +599,8 @@ client.on("message", async (message) => {
   }
 });
 
+const found = new Map();
+
 client.on("messageReactionAdd", async (reaction, user) => {
   const message = reaction.message;
   if (user.bot) return;
@@ -619,9 +652,9 @@ client.on("messageReactionAdd", async (reaction, user) => {
           );
           let infoembed = new MessageEmbed()
             .setDescription(
-              `Dear, ${user} \n Department: ${await ticketConfig.getDataValue(
+              `Dear, ${user} \n  Your support ticket has been created. \n Please wait for a member of the Support Team to help you out. \n\n Department: ${await ticketConfig.getDataValue(
                 "department"
-              )} \n Your support ticket has been created. \n Please wait for a member of the Support Team to help you out. Below are reaction options!`
+              )} \n Staff: No Staff Assigned! \n\n Below are reaction options! `
             )
             .addField("Close", `❌`)
             .addField("Send Me A Copy Of The Ticket on close!", `📩`);
@@ -672,6 +705,39 @@ client.on("messageReactionAdd", async (reaction, user) => {
                 .content.toLowerCase();
               let embed3 = new MessageEmbed().setDescription(
                 "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+              );
+              channel.send(embed3);
+              return;
+            }
+            return;
+          }
+
+          if (department3.includes("downgrade")) {
+            channel.send(
+              `Ok we can assist you here. Mind stating what plan or gb you would like to Downgrade to?`
+            );
+            var department5 = (await channel.awaitMessages(filter3, { max: 1 }))
+              .first()
+              .content.toLowerCase();
+            if (department5) {
+              channel.send(
+                `Perfect Can you list the ip:port of the server you want downgraded?`
+              );
+              var department6 = (
+                await channel.awaitMessages(filter3, { max: 1 })
+              )
+                .first()
+                .content.toLowerCase();
+              if (department6) {
+                channel.send(
+                  "Mind sharing your support pin so we can assist you? This can be found when you log into the Client Area on the top left corner."
+                );
+              }
+              var a7 = (await channel.awaitMessages(filter3, { max: 1 }))
+                .first()
+                .content.toLowerCase();
+              let embed3 = new MessageEmbed().setDescription(
+                "Ok I have transferred this to our Support Team! They can get this completed for you!"
               );
               channel.send(embed3);
               return;
@@ -758,129 +824,123 @@ client.on("messageReactionAdd", async (reaction, user) => {
         .updateOverwrite(ticket.getDataValue("authorId"), {
           VIEW_CHANNEL: false,
         })
-        .catch((err) => error(err));
-
-      ticket.resolved = true;
-      await ticket.save();
-
-      const optionsMessageId = ticket.getDataValue("optionsMessageId");
-      if (reaction.message.id === optionsMessageId) {
-        if (reaction.message.channel.name.endsWith("-hold"))
-          return message.reply(
-            "I Can't Close tickets that where placed on hold"
+        .catch((err) => {
+          found.set("1", "true");
+          reaction.message.channel.send(
+            "Error Had Happened! Member no longer exist or Cant be found! Force Closing in 60 Seconds! Run ``-cancel 1`` to stop!"
           );
-        let channel = reaction.message.channel;
-        channel.send("Logging Channel... Please Wait.");
-        setTimeout(async () => {
-          let yt3 = `${message.channel.name}-closed`;
-          message.channel.send("Saving Transcript... Please Wait.");
+          force.set("1", "true");
+          setTimeout(async () => {
+            let getforce = force.get("1");
+            if (getforce !== "true") return;
+            let yt3 = `${message.channel.name}-closed-forced`;
+            message.channel.send("Force Saving Transcript... Please Wait.");
 
-          let test = message.guild.channels.cache.find(
-            (r) => r.name === "transcripts"
-          );
+            let test = message.guild.channels.cache.find(
+              (r) => r.name === "transcripts"
+            );
 
-          let messageCollection = new Discord.Collection();
-          let channelMessages = await message.channel.messages
-            .fetch({
-              limit: 100,
-            })
-            .catch((err) => console.log(err));
-
-          messageCollection = messageCollection.concat(channelMessages);
-
-          while (channelMessages.size === 100) {
-            let lastMessageId = channelMessages.lastKey();
-            channelMessages = await message.channel.messages
-              .fetch({ limit: 100, before: lastMessageId })
+            let messageCollection = new Discord.Collection();
+            let channelMessages = await message.channel.messages
+              .fetch({
+                limit: 100,
+              })
               .catch((err) => console.log(err));
-            if (channelMessages)
-              messageCollection = messageCollection.concat(channelMessages);
-          }
-          let msgs = messageCollection.array().reverse();
-          let data = await fs.readFile(
-            "./template.html",
-            "utf8",
-            function (err, data) {
-              if (data) {
-                fs.writeFile("index.html", data, function (err, data) {});
-                let guildElement = document.createElement("div");
-                let guildText = document.createTextNode(message.guild.name);
-                let guildImg = document.createElement("img");
-                guildImg.setAttribute("src", message.guild.iconURL());
-                guildImg.setAttribute("width", "150");
-                guildElement.appendChild(guildImg);
-                guildElement.appendChild(guildText);
-                console.log(guildElement.outerHTML);
-                fs.appendFile(
-                  "index.html",
-                  guildElement.outerHTML,
-                  function (err, data) {}
-                );
 
-                msgs.forEach(async (msg) => {
-                  let parentContainer = document.createElement("div");
-                  parentContainer.className = "parent-container";
+            messageCollection = messageCollection.concat(channelMessages);
 
-                  let avatarDiv = document.createElement("div");
-                  avatarDiv.className = "avatar-container";
-                  let img = document.createElement("img");
-                  img.setAttribute("src", msg.author.displayAvatarURL());
-                  img.className = "avatar";
-                  avatarDiv.appendChild(img);
-
-                  parentContainer.appendChild(avatarDiv);
-
-                  let messageContainer = document.createElement("div");
-                  messageContainer.className = "message-container";
-
-                  let nameElement = document.createElement("span");
-                  let name = document.createTextNode(
-                    msg.author.tag +
-                      " " +
-                      msg.createdAt.toDateString() +
-                      " " +
-                      msg.createdAt.toLocaleTimeString() +
-                      " EST"
-                  );
-                  nameElement.appendChild(name);
-                  messageContainer.append(nameElement);
-
-                  if (msg.content.startsWith("```")) {
-                    let m = msg.content.replace(/```/g, "");
-                    let codeNode = document.createElement("code");
-                    let textNode = document.createTextNode(m);
-                    codeNode.appendChild(textNode);
-                    messageContainer.appendChild(codeNode);
-                  } else {
-                    let msgNode = document.createElement("span");
-                    let textNode = document.createTextNode(msg.content);
-                    msgNode.append(textNode);
-                    messageContainer.appendChild(msgNode);
-                  }
-                  parentContainer.appendChild(messageContainer);
-                  await fs.appendFile(
+            while (channelMessages.size === 100) {
+              let lastMessageId = channelMessages.lastKey();
+              channelMessages = await message.channel.messages
+                .fetch({ limit: 100, before: lastMessageId })
+                .catch((err) => console.log(err));
+              if (channelMessages)
+                messageCollection = messageCollection.concat(channelMessages);
+            }
+            let msgs = messageCollection.array().reverse();
+            let data = await fs.readFile(
+              "./template.html",
+              "utf8",
+              function (err, data) {
+                if (data) {
+                  fs.writeFile("index.html", data, function (err, data) {});
+                  let guildElement = document.createElement("div");
+                  let guildText = document.createTextNode(message.guild.name);
+                  let guildImg = document.createElement("img");
+                  guildImg.setAttribute("src", message.guild.iconURL());
+                  guildImg.setAttribute("width", "150");
+                  guildElement.appendChild(guildImg);
+                  guildElement.appendChild(guildText);
+                  console.log(guildElement.outerHTML);
+                  fs.appendFile(
                     "index.html",
-                    parentContainer.outerHTML,
+                    guildElement.outerHTML,
                     function (err, data) {}
                   );
-                });
-              } else {
-                message.channel.send("opps no data");
+
+                  msgs.forEach(async (msg) => {
+                    let parentContainer = document.createElement("div");
+                    parentContainer.className = "parent-container";
+
+                    let avatarDiv = document.createElement("div");
+                    avatarDiv.className = "avatar-container";
+                    let img = document.createElement("img");
+                    img.setAttribute("src", msg.author.displayAvatarURL());
+                    img.className = "avatar";
+                    avatarDiv.appendChild(img);
+
+                    parentContainer.appendChild(avatarDiv);
+
+                    let messageContainer = document.createElement("div");
+                    messageContainer.className = "message-container";
+
+                    let nameElement = document.createElement("span");
+                    let name = document.createTextNode(
+                      msg.author.tag +
+                        " " +
+                        msg.createdAt.toDateString() +
+                        " " +
+                        msg.createdAt.toLocaleTimeString() +
+                        " EST"
+                    );
+                    nameElement.appendChild(name);
+                    messageContainer.append(nameElement);
+
+                    if (msg.content.startsWith("```")) {
+                      let m = msg.content.replace(/```/g, "");
+                      let codeNode = document.createElement("code");
+                      let textNode = document.createTextNode(m);
+                      codeNode.appendChild(textNode);
+                      messageContainer.appendChild(codeNode);
+                    } else {
+                      let msgNode = document.createElement("span");
+                      let textNode = document.createTextNode(msg.content);
+                      msgNode.append(textNode);
+                      messageContainer.appendChild(msgNode);
+                    }
+                    parentContainer.appendChild(messageContainer);
+                    await fs.appendFile(
+                      "index.html",
+                      parentContainer.outerHTML,
+                      function (err, data) {}
+                    );
+                  });
+                } else {
+                  message.channel.send("opps no data");
+                }
               }
-            }
-          );
-          setTimeout(() => {
-            const path = "./index.html";
-            let me2 = ticket.getDataValue("authorId");
-            let member = message.guild.members.cache.get(me2);
+            );
+            setTimeout(() => {
+              let channel = message.channel;
+              const path = "./index.html";
+              let me2 = ticket.getDataValue("authorId");
+              //let member = message.guild.members.cache.get(me2).catch;
 
-            let check;
-            if (checksave.has(me2)) check = checksave.get(me2);
-            if (!checksave.has(me2)) check = false;
+              let check = false;
+              // if (checksave.has(me2)) check = checksave.get(me2);
+              // if (!checksave.has(me2)) check = false;
 
-            if (check) {
-              checksave.delete(me2);
-              member.send({
+              test.send({
                 files: [
                   {
                     attachment: path,
@@ -888,68 +948,258 @@ client.on("messageReactionAdd", async (reaction, user) => {
                   },
                 ],
               });
-            }
-
-            test.send({
-              files: [
-                {
-                  attachment: path,
-                  name: `${yt3}.html`,
-                },
-              ],
-            });
-            setTimeout(() => {
-              fs.unlinkSync(path);
-            }, 10000);
-          }, 5000);
-          channel.send("Transcript Saved! Clossing....").then(() => {
-            setTimeout(() => {
-              // who would be able to run the cmd
-
-              let yt = reaction.message.channel;
-
-              let me2 = ticket.getDataValue("authorId");
-
-              let yy = reaction.message.guild.channels.cache.find(
-                (r) => r.name === process.env.logs
-              );
-              if (!yy)
-                return reaction.message.channel.send(
-                  "couldn't Find `` " + process.env.logs + "``"
-                );
-
-              let ch = me2;
-
-              let member = reaction.message.guild.members.cache.get(me2);
-
-              const embed = new MessageEmbed()
-                .setTitle("Ticket Closed")
-                .setColor("#6441a5")
-                .setAuthor(user.tag, user.avatarURL({ dynamic: true }))
-                .addField("Closed By:", user.tag)
-                .addField(`${yt.name} `, `Ticket Author ${member.user.tag}`)
-                .addField(
-                  "Original Department:",
-                  ticket.getDataValue("original")
-                )
-                .addField(
-                  "Department When Closed:",
-                  ticket.getDataValue("department")
-                )
-                .setThumbnail(member.user.avatarURL({ dynamic: true }))
-                .setTimestamp(message.createdTimestamp);
-
-              yy.send(embed);
-
-              yt.delete();
+              setTimeout(async () => {
+                let channel = message.channel;
+                fs.unlinkSync(path);
+              }, 10000);
             }, 5000);
-          }, 5000);
-        }, 20000);
+            let channel22 = message.channel;
+            channel22
+              .send("Forced Transcript Saved! Force Clossing....")
+              .then(() => {
+                setTimeout(() => {
+                  // who would be able to run the cmd
+
+                  let yt = reaction.message.channel;
+
+                  let me2 = ticket.getDataValue("authorId");
+
+                  let yy = reaction.message.guild.channels.cache.find(
+                    (r) => r.name === process.env.logs
+                  );
+                  if (!yy)
+                    return reaction.message.channel.send(
+                      "couldn't Find `` " + process.env.logs + "``"
+                    );
+
+                  let ch = me2;
+
+                  //let member = reaction.message.guild.members.cache.get(me2);
+
+                  const embed = new MessageEmbed()
+                    .setTitle("Ticket Closed")
+                    .setColor("#6441a5")
+                    .setAuthor(user.tag, user.avatarURL({ dynamic: true }))
+                    .addField("Closed By:", user.tag)
+                    .addField(`${yt.name} `, `Ticket Author <@${me2}>`)
+                    .addField(
+                      `Forced Closed!`,
+                      `${client.user} Had forced closed the ticket with reason: \`\` Error: No User Found or they left the server!\`\``
+                    )
+                    .addField(
+                      "Original Department:",
+                      ticket.getDataValue("original")
+                    )
+                    .addField(
+                      "Department When Closed:",
+                      ticket.getDataValue("department")
+                    )
+                    //.setThumbnail(member.user.avatarURL({ dynamic: true }))
+                    .setTimestamp(message.createdTimestamp);
+
+                  yy.send(embed);
+
+                  yt.delete();
+                }, 5000);
+              }, 5000);
+          }, 60000);
+          return;
+        });
+      let getfound = found.get("1");
+
+      if (getfound) {
+        ticket.resolved = true;
+        await ticket.save();
+
+        const optionsMessageId = ticket.getDataValue("optionsMessageId");
+        if (reaction.message.id === optionsMessageId) {
+          if (reaction.message.channel.name.endsWith("-hold"))
+            return message.reply(
+              "I Can't Close tickets that where placed on hold"
+            );
+          let channel = reaction.message.channel;
+          channel.send("Logging Channel... Please Wait.");
+          setTimeout(async () => {
+            let yt3 = `${message.channel.name}-closed`;
+            message.channel.send("Saving Transcript... Please Wait.");
+
+            let test = message.guild.channels.cache.find(
+              (r) => r.name === "transcripts"
+            );
+
+            let messageCollection = new Discord.Collection();
+            let channelMessages = await message.channel.messages
+              .fetch({
+                limit: 100,
+              })
+              .catch((err) => console.log(err));
+
+            messageCollection = messageCollection.concat(channelMessages);
+
+            while (channelMessages.size === 100) {
+              let lastMessageId = channelMessages.lastKey();
+              channelMessages = await message.channel.messages
+                .fetch({ limit: 100, before: lastMessageId })
+                .catch((err) => console.log(err));
+              if (channelMessages)
+                messageCollection = messageCollection.concat(channelMessages);
+            }
+            let msgs = messageCollection.array().reverse();
+            let data = await fs.readFile(
+              "./template.html",
+              "utf8",
+              function (err, data) {
+                if (data) {
+                  fs.writeFile("index.html", data, function (err, data) {});
+                  let guildElement = document.createElement("div");
+                  let guildText = document.createTextNode(message.guild.name);
+                  let guildImg = document.createElement("img");
+                  guildImg.setAttribute("src", message.guild.iconURL());
+                  guildImg.setAttribute("width", "150");
+                  guildElement.appendChild(guildImg);
+                  guildElement.appendChild(guildText);
+                  console.log(guildElement.outerHTML);
+                  fs.appendFile(
+                    "index.html",
+                    guildElement.outerHTML,
+                    function (err, data) {}
+                  );
+
+                  msgs.forEach(async (msg) => {
+                    let parentContainer = document.createElement("div");
+                    parentContainer.className = "parent-container";
+
+                    let avatarDiv = document.createElement("div");
+                    avatarDiv.className = "avatar-container";
+                    let img = document.createElement("img");
+                    img.setAttribute("src", msg.author.displayAvatarURL());
+                    img.className = "avatar";
+                    avatarDiv.appendChild(img);
+
+                    parentContainer.appendChild(avatarDiv);
+
+                    let messageContainer = document.createElement("div");
+                    messageContainer.className = "message-container";
+
+                    let nameElement = document.createElement("span");
+                    let name = document.createTextNode(
+                      msg.author.tag +
+                        " " +
+                        msg.createdAt.toDateString() +
+                        " " +
+                        msg.createdAt.toLocaleTimeString() +
+                        " EST"
+                    );
+                    nameElement.appendChild(name);
+                    messageContainer.append(nameElement);
+
+                    if (msg.content.startsWith("```")) {
+                      let m = msg.content.replace(/```/g, "");
+                      let codeNode = document.createElement("code");
+                      let textNode = document.createTextNode(m);
+                      codeNode.appendChild(textNode);
+                      messageContainer.appendChild(codeNode);
+                    } else {
+                      let msgNode = document.createElement("span");
+                      let textNode = document.createTextNode(msg.content);
+                      msgNode.append(textNode);
+                      messageContainer.appendChild(msgNode);
+                    }
+                    parentContainer.appendChild(messageContainer);
+                    await fs.appendFile(
+                      "index.html",
+                      parentContainer.outerHTML,
+                      function (err, data) {}
+                    );
+                  });
+                } else {
+                  message.channel.send("opps no data");
+                }
+              }
+            );
+            setTimeout(() => {
+              const path = "./index.html";
+              let me2 = ticket.getDataValue("authorId");
+              let member = message.guild.members.cache.get(me2);
+
+              let check;
+              if (checksave.has(me2)) check = checksave.get(me2);
+              if (!checksave.has(me2)) check = false;
+
+              if (check) {
+                checksave.delete(me2);
+                member.send({
+                  files: [
+                    {
+                      attachment: path,
+                      name: `${yt3}.html`,
+                    },
+                  ],
+                });
+              }
+
+              test.send({
+                files: [
+                  {
+                    attachment: path,
+                    name: `${yt3}.html`,
+                  },
+                ],
+              });
+              setTimeout(() => {
+                fs.unlinkSync(path);
+              }, 10000);
+            }, 5000);
+            channel.send("Transcript Saved! Clossing....").then(() => {
+              setTimeout(() => {
+                // who would be able to run the cmd
+
+                let yt = reaction.message.channel;
+
+                let me2 = ticket.getDataValue("authorId");
+
+                let yy = reaction.message.guild.channels.cache.find(
+                  (r) => r.name === process.env.logs
+                );
+                if (!yy)
+                  return reaction.message.channel.send(
+                    "couldn't Find `` " + process.env.logs + "``"
+                  );
+
+                let ch = me2;
+
+                let member = reaction.message.guild.members.cache.get(me2);
+
+                const embed = new MessageEmbed()
+                  .setTitle("Ticket Closed")
+                  .setColor("#6441a5")
+                  .setAuthor(user.tag, user.avatarURL({ dynamic: true }))
+                  .addField("Closed By:", user.tag)
+                  .addField(`${yt.name} `, `Ticket Author ${member.user.tag}`)
+                  .addField(
+                    "Original Department:",
+                    ticket.getDataValue("original")
+                  )
+                  .addField(
+                    "Department When Closed:",
+                    ticket.getDataValue("department")
+                  )
+                  .setThumbnail(member.user.avatarURL({ dynamic: true }))
+                  .setTimestamp(message.createdTimestamp);
+
+                yy.send(embed);
+
+                yt.delete();
+              }, 5000);
+            }, 5000);
+          }, 20000);
+        }
+      } else {
+        return;
       }
     }
   }
   if (reaction.emoji.name === "✅") {
-    reaction.users.remove(user.id);
     let role = message.guild.roles.cache.get("615745929550626827");
     let member = message.guild.members.cache.get(user.id);
     if (member.roles.cache.has(role.id)) {

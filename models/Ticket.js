@@ -1,8 +1,6 @@
 const { DataTypes, Model } = require("sequelize");
 
-module.exports = class Ticket extends (
-  Model
-) {
+module.exports = class Ticket extends Model {
   static init(sequelize) {
     return super.init(
       {
@@ -30,6 +28,9 @@ module.exports = class Ticket extends (
           type: DataTypes.STRING,
         },
         original: {
+          type: DataTypes.STRING,
+        },
+        staff: {
           type: DataTypes.STRING,
         },
       },
