@@ -69,7 +69,7 @@ client.on("message", async (message) => {
         where: { channelId: message.channel.id },
       });
 
-      if (ticket66.staff === "null") {
+      if (!ticket66.staff) {
         message.channel.messages
           .fetch({ around: ticket66.optionsMessageId, limit: 1 })
           .then(async (msg) => {
@@ -291,204 +291,18 @@ client.on("message", async (message) => {
     message.delete();
   }
   if (message.content.toLocaleLowerCase() === `${prefix}close`) {
-    const ticket = await Ticket.findOne({
+    let embed = new MessageEmbed().setDescription(
+      "Ok To close The Ticket React With ❌!"
+    );
+    let msg2 = await message.channel.send(embed);
+    const ticket3 = await Ticket.findOne({
       where: { channelId: message.channel.id },
     });
 
-    if (ticket) {
-      message.channel
-        .updateOverwrite(ticket.getDataValue("authorId"), {
-          VIEW_CHANNEL: false,
-        })
-        .catch((err) => error(err));
-      return await message.reply(
-        "React to the proper reaction in the msg in the pins to close! Close command tempararaly unavalible!"
-      );
+    ticket3.optionsMessageId = msg2.id;
+    await ticket3.save();
 
-      ticket.resolved = true;
-      await ticket.save();
-
-      const optionsMessageId = ticket.getDataValue("optionsMessageId");
-      if (optionsMessageId) {
-        if (!message.channel.name.startsWith("ticket-"))
-          return message.reply("This isnt a ticket");
-
-        if (message.channel.name.endsWith("-hold"))
-          return message.reply(
-            "I Can't Close tickets that where placed on hold"
-          );
-        let channel = message.channel;
-        channel.send("Logging Channel... Please Wait.");
-        setTimeout(async () => {
-          let yt3 = `${message.channel.name}-closed`;
-          message.channel.send("Saving Transcript... Please Wait.");
-
-          let test = message.guild.channels.cache.find(
-            (r) => r.name === "transcripts"
-          );
-
-          let messageCollection = new Discord.Collection();
-          let channelMessages = await message.channel.messages
-            .fetch({
-              limit: 100,
-            })
-            .catch((err) => console.log(err));
-
-          messageCollection = messageCollection.concat(channelMessages);
-
-          while (channelMessages.size === 100) {
-            let lastMessageId = channelMessages.lastKey();
-            channelMessages = await message.channel.messages
-              .fetch({ limit: 100, before: lastMessageId })
-              .catch((err) => console.log(err));
-            if (channelMessages)
-              messageCollection = messageCollection.concat(channelMessages);
-          }
-          let msgs = messageCollection.array().reverse();
-          let data = await fs.readFile(
-            "./template.html",
-            "utf8",
-            function (err, data) {
-              if (data) {
-                fs.writeFile("index.html", data, function (err, data) {});
-                let guildElement = document.createElement("div");
-                let guildText = document.createTextNode(message.guild.name);
-                let guildImg = document.createElement("img");
-                guildImg.setAttribute("src", message.guild.iconURL());
-                guildImg.setAttribute("width", "150");
-                guildElement.appendChild(guildImg);
-                guildElement.appendChild(guildText);
-                console.log(guildElement.outerHTML);
-                fs.appendFile(
-                  "index.html",
-                  guildElement.outerHTML,
-                  function (err, data) {}
-                );
-
-                msgs.forEach(async (msg) => {
-                  let parentContainer = document.createElement("div");
-                  parentContainer.className = "parent-container";
-
-                  let avatarDiv = document.createElement("div");
-                  avatarDiv.className = "avatar-container";
-                  let img = document.createElement("img");
-                  img.setAttribute("src", msg.author.displayAvatarURL());
-                  img.className = "avatar";
-                  avatarDiv.appendChild(img);
-
-                  parentContainer.appendChild(avatarDiv);
-
-                  let messageContainer = document.createElement("div");
-                  messageContainer.className = "message-container";
-
-                  let nameElement = document.createElement("span");
-                  let name = document.createTextNode(
-                    msg.author.tag +
-                      " " +
-                      msg.createdAt.toDateString() +
-                      " " +
-                      msg.createdAt.toLocaleTimeString() +
-                      " EST"
-                  );
-                  nameElement.appendChild(name);
-                  messageContainer.append(nameElement);
-
-                  if (msg.content.startsWith("```")) {
-                    let m = msg.content.replace(/```/g, "");
-                    let codeNode = document.createElement("code");
-                    let textNode = document.createTextNode(m);
-                    codeNode.appendChild(textNode);
-                    messageContainer.appendChild(codeNode);
-                  } else {
-                    let msgNode = document.createElement("span");
-                    let textNode = document.createTextNode(msg.content);
-                    msgNode.append(textNode);
-                    messageContainer.appendChild(msgNode);
-                  }
-                  parentContainer.appendChild(messageContainer);
-                  await fs.appendFile(
-                    "index.html",
-                    parentContainer.outerHTML,
-                    function (err, data) {}
-                  );
-                });
-              } else {
-                message.channel.send("opps no data");
-              }
-            }
-          );
-          setTimeout(() => {
-            const path = "./index.html";
-            let me2 = ticket.getDataValue("authorId");
-            let member = message.guild.members.cache.get(me2);
-
-            let check;
-            if (checksave.has(me2)) check = checksave.get(me2);
-            if (!checksave.has(me2)) check = false;
-
-            if (check) {
-              checksave.delete(me2);
-              member.send({
-                files: [
-                  {
-                    attachment: path,
-                    name: `${yt3}.html`,
-                  },
-                ],
-              });
-            }
-
-            test.send({
-              files: [
-                {
-                  attachment: path,
-                  name: `${yt3}.html`,
-                },
-              ],
-            });
-            setTimeout(() => {
-              fs.unlinkSync(path);
-            }, 10000);
-          }, 5000);
-          channel.send("Transcript Saved! Clossing....").then(() => {
-            setTimeout(() => {
-              // who would be able to run the cmd
-
-              let yt = message.channel;
-
-              let me2 = ticket.getDataValue("authorId");
-
-              let yy = message.guild.channels.cache.find(
-                (r) => r.name === process.env.logs
-              );
-              if (!yy)
-                return message.channel.send(
-                  "couldn't Find `` " + process.env.logs + "``"
-                );
-
-              let ch = me2;
-
-              let member = message.guild.members.cache
-                .get(me2)
-                .catch((err) => message.channel.send(err.name));
-
-              const embed = new MessageEmbed()
-                .setTitle("Ticket Closed")
-                .setColor("#6441a5")
-                .setAuthor(message.author.tag, message.author.avatarURL())
-                .addField("Closed By:", message.author.tag)
-                .addField(`${yt.name} `, `Ticket Author ${member.user.tag}`)
-                .setThumbnail(member.user.avatarURL())
-                .setTimestamp(message.createdTimestamp);
-
-              yy.send(embed);
-
-              yt.delete();
-            }, 5000);
-          }, 5000);
-        }, 20000);
-      }
-    }
+    msg2.react("❌");
     return;
   }
   if (args[0].toLocaleLowerCase() === `transfer`) {
@@ -538,6 +352,67 @@ client.on("message", async (message) => {
           let fetched = msg.first();
           fetched.edit(infoembed);
           message.channel.send(`Department Set to ${args[1]}`);
+        });
+    } else {
+      console.log("No");
+      return message.reply(`Must be a ticket i created!`);
+    }
+  }
+
+  if (args[0].toLocaleLowerCase() === `stafftransfer`) {
+    if (!message.channel.name.startsWith("ticket-"))
+      return message.channel.send(
+        "You Must be In a ticket to change the department!"
+      );
+    message.delete();
+    var dep =
+      message.guild.member(message.mentions.users.first()) ||
+      message.guild.members.cache.get(args[1]) ||
+      message.author;
+    const role = message.guild.roles.cache.find((r) => r.name === "Staff");
+
+    if (!message.member.roles.cache.has(role.id)) {
+      return message.channel.send(
+        `Sorry Currently only the staff team can transfer Staff!`
+      );
+    }
+    console.log(args);
+    if (!dep) {
+      return message.reply("No Staff selected!");
+    }
+
+    console.log("1");
+    const ticket44 = await Ticket.findOne({
+      where: { channelId: message.channel.id },
+    });
+    console.log("2");
+
+    if (ticket44) {
+      console.log("yes");
+      ticket44.staff = dep.id;
+      await ticket44.save();
+
+      //message.channel.setTopic(`Department: ${args[1]}`);
+      message.channel.messages
+        .fetch({ around: ticket44.optionsMessageId, limit: 1 })
+        .then(async (msg) => {
+          let user = message.guild.members.cache.get(ticket44.authorId);
+          let staff1 = message.guild.members.cache.get(ticket44.staff);
+          let infoembed = new MessageEmbed()
+            .setDescription(
+              `Dear, ${user} \n  Your support ticket has been created. \n A Staff Member Is Currently here to help you. \n\n Original Department: ${
+                ticket44.original
+              } \n\n Department: ${await ticket44.department} \n Staff: <@${
+                ticket44.staff
+              }> \n\n Below are reaction options! `
+            )
+            .addField("Close", `❌`)
+            .addField("Send Me A Copy Of The Ticket on close!", `📩`);
+          let fetched = msg.first();
+          fetched.edit(infoembed);
+          await message.channel.send(`Transferred To ${dep}`).then((msg) => {
+            msg.delete({ timeout: 5000 });
+          });
         });
     } else {
       console.log("No");
@@ -1007,7 +882,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
         });
       let getfound = found.get("1");
 
-      if (getfound) {
+      if (!getfound) {
         ticket.resolved = true;
         await ticket.save();
 
