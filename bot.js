@@ -849,10 +849,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
                     message.guild.name + "TEST!"
                   );
                   let guildImg = document.createElement("img");
-                  guildImg.setAttribute(
-                    "src",
-                    "https://gamearoo.top/wp-content/uploads/2021/05/img_5848071.png"
-                  ); //message.guild.iconURL()
+                  guildImg.setAttribute("src", message.guild.iconURL()); //message.guild.iconURL()
                   guildImg.setAttribute("width", "150");
                   guildElement.appendChild(guildImg);
                   guildElement.appendChild(guildText);
