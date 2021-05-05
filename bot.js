@@ -62,6 +62,20 @@ client.on("ready", async () => {
 
 client.on("message", async (message) => {
   if (message.author.bot) return;
+  let dmembed2 = new MessageEmbed()
+    .setDescription(`Sorry We Don't Provide Dm Support.`)
+    .setColor("RED");
+  if (message.channel.type === "dm") {
+    if (cooldown.has(message.author.id)) return;
+    if (message.author.bot) return;
+
+    message.channel.send(dmembed2);
+    cooldown.add(message.author.id);
+    setTimeout(() => {
+      cooldown.delete(message.author.id);
+    }, 200000);
+    return;
+  }
   if (message.channel.name.startsWith("ticket-")) {
     if (!message.member.roles.cache.has("499965086304043008")) return;
     if (!message.content.startsWith("-")) {
@@ -156,140 +170,6 @@ client.on("message", async (message) => {
     msg2.react("❌");
   }
 
-  if (message.content.toLocaleLowerCase() === `${prefix}new`) {
-    return message.reply(`You can open a ticket in <#798797140570013706>!`);
-    const user = message.author;
-
-    const ticketConfig = await TicketConfig.findOne({
-      where: { messageId: `${process.env.it}` },
-    });
-    if (ticketConfig) {
-      const findTicket = await Ticket.findOne({
-        where: { authorId: user.id, resolved: false },
-      });
-
-      if (findTicket) {
-        let existing = new MessageEmbed()
-          .setAuthor(message.guild.name)
-          .setDescription("Error While Making The Ticket (Duplicate)")
-
-          .setColor("RED")
-          .setThumbnail(message.guild.iconURL())
-
-          .setFooter(
-            "You have a ticket already",
-            "https://cdn.discordapp.com/attachments/664911476405960754/693556558130577478/Fallout_icon.png"
-          );
-        user.send(existing).catch((err) => error(err));
-      } else {
-        console.log("Making A Ticket...");
-        try {
-          const filter2 = (m) => m.author.id === message.author.id;
-
-          message.channel.send(
-            `Please Provide A Department (Billing, Support, Setup Help, Pre Sales, or modpack!`
-          );
-          var department = (
-            await message.channel.awaitMessages(filter2, { max: 1 })
-          ).first().content;
-          if (
-            department !== "Billing" ||
-            "Support" ||
-            "Setup Help" ||
-            "Pre Sales" ||
-            "Modpack"
-          )
-            department = "Support";
-          message.channel.bulkDelete(2, true);
-
-          // let reason = `To set the Subject run ${prefix}subject <subject>`;
-
-          const staffrole = message.guild.roles.cache.find(
-            (r) => r.name === process.env.staff
-          );
-          let staffid = staffrole.id;
-
-          const channel = await message.guild.channels.create("ticket", {
-            parent: await ticketConfig.getDataValue("parentId"),
-            topic: `Department: ${department}`,
-            permissionOverwrites: [
-              { deny: "VIEW_CHANNEL", id: message.guild.id },
-              { allow: "VIEW_CHANNEL", id: user.id },
-              { allow: "VIEW_CHANNEL", id: staffid },
-            ],
-            reason: `${user.tag} Had Reacted To Open this ticket!`,
-          });
-          let infoembed = new MessageEmbed()
-            .setDescription(
-              `Dear, ${user} \n \n Your support ticket has been created.\n Department: ${department} \n Please wait for a member of the Support Team to help you out. Below are reaction options!`
-            )
-            .addField("Close", `❌`)
-            .addField("Send Me A Copy Of The Ticket on close!", `📩`);
-
-          const msg = await channel.send(infoembed);
-          await msg.pin();
-          await msg.react("❌");
-          await msg.react("📩");
-
-          const ticket = await Ticket.create({
-            authorId: user.id,
-            channelId: channel.id,
-            guildId: message.guild.id,
-            resolved: false,
-            optionsMessageId: msg.id,
-            department,
-            original: department,
-          });
-
-          const ticketId = String(ticket.getDataValue("ticketId")).padStart(
-            4,
-            0
-          );
-          await channel.edit({ name: `ticket-${ticketId}` });
-          var hi = "no";
-          const filter3 = (m) => m.author.id === message.author.id;
-
-          await channel.send(`Hello ${user}, How may we help you today?`);
-
-          var department3 = (await channel.awaitMessages(filter3, { max: 1 }))
-            .first()
-            .content.toLowerCase();
-
-          if (department3.includes("how to setup a ftp")) {
-            channel.send(`
-              ${message.member}, You can try watching this video: https://youtu.be/zIP5n1ruEgo 
-            `);
-            channel.send("Has this helped You?");
-            var department4 = (await channel.awaitMessages(filter3, { max: 1 }))
-              .first()
-              .content.toLowerCase();
-            if (department4.startsWith("yes")) {
-              let embed = new MessageEmbed().setDescription(
-                "Glad i was able to assist you 😃. Can we close this ticket or will you still need it?"
-              );
-              channel.send(embed);
-            }
-            if (department4.startsWith("no")) {
-              let embed = new MessageEmbed().setDescription(
-                "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
-              );
-              channel.send(embed);
-            }
-          } else {
-            let embed = new MessageEmbed().setDescription(
-              "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
-            );
-            channel.send(embed);
-          }
-        } catch (err) {
-          error(err);
-        }
-      }
-    } else {
-      return;
-    }
-    message.delete();
-  }
   if (message.content.toLocaleLowerCase() === `${prefix}close`) {
     let embed = new MessageEmbed().setDescription(
       "Ok To close The Ticket React With ❌!"
@@ -358,8 +238,8 @@ client.on("message", async (message) => {
       return message.reply(`Must be a ticket i created!`);
     }
   }
-    
-    if (args[0].toLocaleLowerCase() === `stafftransfer`) {
+
+  if (args[0].toLocaleLowerCase() === `stafftransfer`) {
     if (!message.channel.name.startsWith("ticket-"))
       return message.channel.send(
         "You Must be In a ticket to change the department!"
@@ -419,7 +299,6 @@ client.on("message", async (message) => {
       return message.reply(`Must be a ticket i created!`);
     }
   }
-
 
   if (
     message.content.toLocaleLowerCase() === `${prefix}setup` &&
@@ -565,9 +444,9 @@ client.on("messageReactionAdd", async (reaction, user) => {
           var department3 = (await channel.awaitMessages(filter3, { max: 1 }))
             .first()
             .content.toLowerCase();
-            //if (department3.includes("110")) {
-             //  return channel.send(`We are currently looking into this issue at this time We will let you know here when its resolved.`)
-            //}
+          //if (department3.includes("110")) {
+          //  return channel.send(`We are currently looking into this issue at this time We will let you know here when its resolved.`)
+          //}
           if (department3.includes("upgrade")) {
             channel.send(
               `Ok we can assist you here. Mind stating what plan or gb you would like to upgrade to?`
@@ -583,9 +462,12 @@ client.on("messageReactionAdd", async (reaction, user) => {
                 await channel.awaitMessages(filter3, { max: 1 })
               )
                 .first()
-                .content.toLowerCase();
+                .content.toLowerCase(); //temp edits
+              //let embed3 = new MessageEmbed().setDescription(
+              // "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+              // );
               let embed3 = new MessageEmbed().setDescription(
-                "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+                "Ok I have transferred this to our Support Team!  Please Be patient. Also if all possible please supply us your account email so we can look up your account. Staff may ask for transaction info to further verify ownership of the account."
               );
               channel.send(embed3);
               return;
@@ -610,8 +492,12 @@ client.on("messageReactionAdd", async (reaction, user) => {
                 .first()
                 .content.toLowerCase();
               if (department6) {
+                //temp edits
+                // channel.send(
+                //   "Mind sharing your support pin so we can assist you? This can be found when you log into the Client Area on the top left corner."
+                // );
                 channel.send(
-                  "Mind sharing your support pin so we can assist you? This can be found when you log into the Client Area on the top left corner."
+                  "If all possible please supply us your account email so we can look up your account. Staff may ask for transaction info to further verify ownership of the account."
                 );
               }
               var a7 = (await channel.awaitMessages(filter3, { max: 1 }))
@@ -649,8 +535,12 @@ client.on("messageReactionAdd", async (reaction, user) => {
               msg2.react("❌");
             }
             if (department4.startsWith("no")) {
+              //temp edits
+              // let embed = new MessageEmbed().setDescription(
+              //   "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+              // );
               let embed = new MessageEmbed().setDescription(
-                "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+                "Ok I have transferred this to our Support Team!  Please Be patient. Also if all possible please supply us your account email so we can look up your account. Staff may ask for transaction info to further verify ownership of the account."
               );
               channel.send(embed);
             } else {
@@ -674,17 +564,29 @@ client.on("messageReactionAdd", async (reaction, user) => {
                 msg3.react("❌");
               }
               if (department5.startsWith("no")) {
+                //temp edits
+                // let embed = new MessageEmbed().setDescription(
+                //   "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+                // );
                 let embed = new MessageEmbed().setDescription(
-                  "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+                  "Ok I have transferred this to our Support Team!  Please Be patient. Also if all possible please supply us your account email so we can look up your account. Staff may ask for transaction info to further verify ownership of the account."
                 );
                 channel.send(embed);
               }
             }
           } else {
+            //temp edits
+            // let embed = new MessageEmbed().setDescription(
+            //   "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+            // );
             let embed = new MessageEmbed().setDescription(
-              "Ok I have transferred this to our Support Team! Mind sharing your support pin so we can assist you? This can be found when you log into the [Client Area](https://clients.fallout-hosting.com/) on the top left corner. "
+              "Ok I have transferred this to our Support Team!  Please Be patient. Also if all possible please supply us your account email so we can look up your account. Staff may ask for transaction info to further verify ownership of the account."
             );
-            channel.send(embed);
+            if (ticket.department === "ModPacks") {
+              channel.send("<@239586213860868096>", embed);
+            } else {
+              channel.send(embed);
+            }
           }
         } catch (err) {
           error(err);
@@ -696,7 +598,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
   }
   if (reaction.emoji.name === "❌") {
     message.reactions.removeAll();
-     
+
     const ticket = await Ticket.findOne({
       where: { channelId: reaction.message.channel.id },
     });
@@ -705,10 +607,13 @@ client.on("messageReactionAdd", async (reaction, user) => {
       reaction.message.channel
         .updateOverwrite(ticket.getDataValue("authorId"), {
           VIEW_CHANNEL: false,
-        }).then(() => {found.set("1", true)})
+        })
+        .then(() => {
+          found.set("1", true);
+        })
         .catch((err) => {
-          hi33 = 'false'
-          found.set("1", false)
+          hi33 = "false";
+          found.set("1", false);
           reaction.message.channel.send(
             "Error Had Happened! Member no longer exist or Cant be found! Force Closing in 60 Seconds! Run ``-cancel 1`` to stop!"
           );
@@ -768,7 +673,10 @@ client.on("messageReactionAdd", async (reaction, user) => {
                     let avatarDiv = document.createElement("div");
                     avatarDiv.className = "avatar-container";
                     let img = document.createElement("img");
-                    img.setAttribute("src", msg.author.displayAvatarURL());
+                    img.setAttribute(
+                      "src",
+                      msg.author.avatarURL({ dynamic: true })
+                    );
                     img.className = "avatar";
                     avatarDiv.appendChild(img);
 
@@ -883,18 +791,16 @@ client.on("messageReactionAdd", async (reaction, user) => {
                   yy.send(embed);
 
                   yt.delete();
-                  found.delete()
+                  found.delete();
                 }, 5000);
               }, 5000);
-             
           }, 60000);
           return;
         });
       let getfound = found.get("1");
-        if(!getfound) return console.log('Found!');
-        
+      if (!getfound) return console.log("Found!");
 
-      if (hi33 === 'true') {
+      if (hi33 === "true") {
         ticket.resolved = true;
         await ticket.save();
 
@@ -939,9 +845,14 @@ client.on("messageReactionAdd", async (reaction, user) => {
                 if (data) {
                   fs.writeFile("index.html", data, function (err, data) {});
                   let guildElement = document.createElement("div");
-                  let guildText = document.createTextNode(message.guild.name);
+                  let guildText = document.createTextNode(
+                    message.guild.name + "TEST!"
+                  );
                   let guildImg = document.createElement("img");
-                  guildImg.setAttribute("src", message.guild.iconURL());
+                  guildImg.setAttribute(
+                    "src",
+                    "https://gamearoo.top/wp-content/uploads/2021/05/img_5848071.png"
+                  ); //message.guild.iconURL()
                   guildImg.setAttribute("width", "150");
                   guildElement.appendChild(guildImg);
                   guildElement.appendChild(guildText);
@@ -959,7 +870,10 @@ client.on("messageReactionAdd", async (reaction, user) => {
                     let avatarDiv = document.createElement("div");
                     avatarDiv.className = "avatar-container";
                     let img = document.createElement("img");
-                    img.setAttribute("src", msg.author.displayAvatarURL());
+                    img.setAttribute(
+                      "src",
+                      msg.author.avatarURL({ dynamic: true })
+                    );
                     img.className = "avatar";
                     avatarDiv.appendChild(img);
 
@@ -1077,7 +991,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
                 yy.send(embed);
 
                 yt.delete();
-                found.delete()
+                found.delete();
               }, 5000);
             }, 5000);
           }, 20000);
