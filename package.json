@@ -1,6 +1,6 @@
 {
   "name": "fallout-hosting-ticket-bot",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "description": "for the fallout-hosting discord server: https://discord.gg/DspgkKwfCr",
   "main": "bot.js",
   "scripts": {
@@ -18,10 +18,10 @@
   "homepage": "https://github.com/GamearooCodes/Fallout-Hosting-Ticket-Bot#readme",
   "dependencies": {
     "canvas": "^2.7.0",
-    "discord.js": "^12.5.1",
+    "discord.js": "^12.4.1",
     "dotenv": "^8.2.0",
-    "jsdom": "^16.5.1",
+    "jsdom": "^16.4.0",
     "mysql2": "^2.2.5",
-    "sequelize": "^6.6.1"
+    "sequelize": "^6.3.5"
   }
 }

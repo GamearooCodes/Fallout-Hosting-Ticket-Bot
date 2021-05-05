@@ -358,8 +358,8 @@ client.on("message", async (message) => {
       return message.reply(`Must be a ticket i created!`);
     }
   }
-
-  if (args[0].toLocaleLowerCase() === `stafftransfer`) {
+    
+    if (args[0].toLocaleLowerCase() === `stafftransfer`) {
     if (!message.channel.name.startsWith("ticket-"))
       return message.channel.send(
         "You Must be In a ticket to change the department!"
@@ -420,6 +420,7 @@ client.on("message", async (message) => {
     }
   }
 
+
   if (
     message.content.toLocaleLowerCase() === `${prefix}setup` &&
     message.member.roles.cache.find((r) => r.name === process.env.staff)
@@ -475,6 +476,8 @@ client.on("message", async (message) => {
 });
 
 const found = new Map();
+
+var hi33 = "true";
 
 client.on("messageReactionAdd", async (reaction, user) => {
   const message = reaction.message;
@@ -562,6 +565,9 @@ client.on("messageReactionAdd", async (reaction, user) => {
           var department3 = (await channel.awaitMessages(filter3, { max: 1 }))
             .first()
             .content.toLowerCase();
+            //if (department3.includes("110")) {
+             //  return channel.send(`We are currently looking into this issue at this time We will let you know here when its resolved.`)
+            //}
           if (department3.includes("upgrade")) {
             channel.send(
               `Ok we can assist you here. Mind stating what plan or gb you would like to upgrade to?`
@@ -690,6 +696,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
   }
   if (reaction.emoji.name === "❌") {
     message.reactions.removeAll();
+     
     const ticket = await Ticket.findOne({
       where: { channelId: reaction.message.channel.id },
     });
@@ -698,9 +705,10 @@ client.on("messageReactionAdd", async (reaction, user) => {
       reaction.message.channel
         .updateOverwrite(ticket.getDataValue("authorId"), {
           VIEW_CHANNEL: false,
-        })
+        }).then(() => {found.set("1", true)})
         .catch((err) => {
-          found.set("1", "true");
+          hi33 = 'false'
+          found.set("1", false)
           reaction.message.channel.send(
             "Error Had Happened! Member no longer exist or Cant be found! Force Closing in 60 Seconds! Run ``-cancel 1`` to stop!"
           );
@@ -875,14 +883,18 @@ client.on("messageReactionAdd", async (reaction, user) => {
                   yy.send(embed);
 
                   yt.delete();
+                  found.delete()
                 }, 5000);
               }, 5000);
+             
           }, 60000);
           return;
         });
       let getfound = found.get("1");
+        if(!getfound) return console.log('Found!');
+        
 
-      if (!getfound) {
+      if (hi33 === 'true') {
         ticket.resolved = true;
         await ticket.save();
 
@@ -1065,6 +1077,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
                 yy.send(embed);
 
                 yt.delete();
+                found.delete()
               }, 5000);
             }, 5000);
           }, 20000);
